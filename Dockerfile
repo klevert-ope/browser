@@ -1,16 +1,18 @@
 # Use a base image with a headless browser
 FROM selenium/standalone-chrome:latest
 
+# Set non-interactive mode to prevent prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install noVNC and dependencies
-RUN --mount=type=cache,target=/var/cache/apt \
-    sudo apt-get update && \
-    sudo apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         git \
         python3-pip \
         websockify \
         x11vnc && \
     rm -rf /var/lib/apt/lists/* && \
-    sudo pip3 install --no-cache-dir numpy && \
+    pip3 install --no-cache-dir numpy && \
     git clone https://github.com/novnc/noVNC.git /opt/noVNC && \
     ln -s /opt/noVNC/vnc.html /opt/noVNC/index.html
 
