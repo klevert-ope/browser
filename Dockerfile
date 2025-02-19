@@ -1,35 +1,28 @@
-# Use a lightweight Python base image
-FROM python:3.11-slim
+FROM ubuntu:20.04
 
-# Set non-interactive mode to prevent installation prompts
-ENV DEBIAN_FRONTEND=noninteractive
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    firefox \
+    tigervnc-standalone-server \
+    fluxbox \
+    websockify \
+    novnc \
+    x11vnc \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        git \
-        websockify \
-        x11vnc \
-        wget \
-        unzip \
-        xvfb \
-        curl && \
-    rm -rf /var/lib/apt/lists/*
+# Create a user for running the browser
+RUN useradd -m browseruser
 
-# Install Chrome manually
-RUN wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    apt-get install -y ./chrome.deb && \
-    rm chrome.deb
+# Set up a VNC password
+RUN mkdir -p /home/browseruser/.vnc && \
+    echo "vncpassword" | vncpasswd -f > /home/browseruser/.vnc/passwd && \
+    chmod 600 /home/browseruser/.vnc/passwd && \
+    chown -R browseruser:browseruser /home/browseruser/.vnc
 
-# Install Selenium & Python dependencies
-RUN pip install --no-cache-dir selenium numpy
+# Switch to non-root user
+USER browseruser
+WORKDIR /home/browseruser
 
-# Clone noVNC and setup
-RUN git clone https://github.com/novnc/noVNC.git /opt/noVNC && \
-    ln -s /opt/noVNC/vnc.html /opt/noVNC/index.html
-
-# Expose VNC and noVNC ports
-EXPOSE 5900 6080
-
-# Start X11 VNC and noVNC server
-CMD ["bash", "-c", "x11vnc -forever -create -rfbport 5900 & /opt/noVNC/utils/novnc_proxy --vnc localhost:5900 --listen 6080"]
+# Start VNC server and browser
+CMD ["sh", "-c", "Xvfb :1 -screen 0 1024x768x16 & fluxbox & x11vnc -display :1 -forever -usepw -shared & websockify --web /usr/share/novnc/ 5901 localhost:5900"]
